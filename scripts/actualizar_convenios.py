@@ -56,6 +56,63 @@ CANONICAS = [
 ]
 
 
+# --- Clasificación temática -------------------------------------------------
+# NO es un dato oficial: el CSV no publica el área de gobierno ni el distrito que
+# tramita cada convenio. Esta clasificación la deduce el script por palabras clave
+# del objeto y, si el objeto no dice nada (nombres de proyecto como "La Brújula de
+# la Esperanza"), por el tipo de entidad firmante. Lo que no encaja se queda en
+# "Sin clasificar" a propósito: es más honesto que forzarlo a un cajón.
+# Las reglas se evalúan en orden: la primera que coincide gana.
+AREAS_OBJETO = [
+    ("Seguridad y emergencias", r"policia|bomber|emergencia|proteccion civil|salvamento|socorrismo|seguridad vial|cuerpo nacional"),
+    ("Fiestas y tradiciones", r"cofrad|semana santa|carnaval|verdiales|feria de malaga|feria malaga|caseta|belen|cabalgata|reyes magos|romeria|folclor|fiesta|rengue|cruces de mayo|procesion|trono|ornamentacion|santisima|virgen|cristo|hermandad"),
+    ("Deporte", r"deport|natacion|futbol|baloncesto|gimnasia|atletismo|maraton|ciclis|padel|tenis|balonmano|voley|ajedrez|piragu|escalada|surf|boxeo|futsal|hockey|triatlon|petanca|karate|judo|esgrima|remo|halterof|entrenamientos y partidos"),
+    ("Movilidad y transporte", r"transporte|movilidad|bicicleta|emtsam|autobus|aparcamiento|trafico|titulos de viaje|precio de los abonos|bonificaciones en el precio"),
+    ("Salud, consumo y adicciones", r"salud|sanitar|adicion|adiccion|drogodepend|alcohol|tabaquismo|donacion de sangre|hospital|paliativos|cancer|alzheimer|consumo|arbitraje|prevencion universal|ocio nocturno|mediadores preventivos"),
+    ("Mayores", r"mayores|tercera edad|envejecimiento|centro de dia|siempre acompanados"),
+    ("Igualdad y mujer", r"igualdad|mujer|violencia de genero|lgtbi|feminis|conciliacion|punto violeta"),
+    ("Derechos sociales e inclusión", r"social|inclusion|vulnerab|pobreza|exclusion|sin hogar|inmigra|refugiado|acoge|acogida|discapacidad|diversidad funcional|dependencia|voluntariado|familias|infancia|menores|adopcion|banco de alimentos|comedor|solidaridad|gitano|reparto de alimentos|personas en situacion|sindrome de down|extranjeras"),
+    ("Educación y formación", r"educa|escolar|escuela infantil|universidad|catedra|formacion profesional|formativas|practicas remuneradas|ensenanzas|instituto|beca|aula|alumn|docente|ciclo formativo|\bformacion|cursos de verano|albaneria|albanileria|malaga 42"),
+    ("Juventud", r"juvenil|juventud|joven"),
+    ("Cultura y patrimonio", r"cultur|museo|teatro|cine|festival|libro|biblioteca|music|orquesta|flamenco|arte|artist|patrimonio|arqueolog|excavacion|exposicion|literat|poes|danza|banda|coro|periodismo|premio|certamen|audiovisual|fotograf|comic|zarzuela|cante|concier|recital|noche en blanco|pasarela|fashion"),
+    ("Turismo y promoción de la ciudad", r"turis|congres|promocion de la ciudad|gastronom|vino|cerveza|marca malaga|rodaje|seatrade|vitur|hosteleria|protour|agencias de viajes|malaga is here"),
+    ("Empleo, empresa e innovación", r"empleo|emprend|empresa|comercio|industria|innovacion|tecnolog|startup|economia|mercado|microelectronica|inteligencia artificial|incubadora|polo digital"),
+    ("Medio ambiente y sostenibilidad", r"medio ambiente|sostenib|energia|climatic|residuo|reciclaj|arbol|parque|jardin|animal|zoosanitario|playa|litoral|huerto|biodiversidad|contaminacion|corredores verdes|mas bella|aguas regeneradas|ciclo del agua|abastecimiento|saneamiento"),
+    ("Urbanismo y vivienda", r"urbanis|vivienda|rehabilitacion|suelo|edificacion|obras|infraestructura|accesibilidad|alquiler de espacios|cesion de uso|solar"),
+    ("Participación ciudadana y distritos", r"participacion|distrito|vecin|asociacionismo|barriada|convivencia"),
+    ("Cooperación internacional y proyectos europeos", r"cooperacion|hermanamiento|internacional|ods|agenda 2030|agenda urbana|accion exterior|metropolis global|europa eres tu|urbact|interreg|aduanera|tolerancia|femp"),
+    ("Administración y transformación digital", r"administracion electronica|transparencia|tributar|recaudacion|padron|estadistica|datos abiertos|interoperabilidad|sede electronica|ciberseguridad|ciudad inteligente|territorios inteligentes|agenda digital|smart city|software|nextauditool|programa matrix|encomienda"),
+]
+
+# Segunda pasada: cuando el objeto es sólo el nombre del proyecto, el tipo de
+# entidad firmante sí dice de qué va.
+AREAS_ENTIDAD = [
+    ("Fiestas y tradiciones", r"cofradia|hermandad|santisima|pena el|pena la|penas|verdiales|agrupacion de cofradias"),
+    ("Deporte", r"\bclub\b|deportiv|balonmano|baloncesto|natacion|futbol"),
+    ("Cultura y patrimonio", r"conservatorio|musical|orquesta|\bcoro\b|teatro|museo|cinemateca|banda"),
+    ("Derechos sociales e inclusión", r"caritas|cruz roja|acoge|solidaridad|sindrome de down|ronald mcdonald|banco solidario|nena paine|marroqui|esperanza|cesma|dosta|arrabal"),
+    ("Juventud", r"juvenil"),
+    ("Igualdad y mujer", r"gender|50&50"),
+    ("Educación y formación", r"universidad|conservatorio superior|centro superior de formacion"),
+    ("Turismo y promoción de la ciudad", r"hosteleria|agencias de viajes|vitur|malagaport|cervezas|mahou"),
+    ("Empleo, empresa e innovación", r"smart city|telefonica|cluster|asociacion de comercios|comerciantes|empresarios"),
+    ("Participación ciudadana y distritos", r"vecinal|vecinos|asociacion de mujeres"),
+]
+
+
+def area_tematica(objeto, entidades):
+    """Área temática deducida del objeto y, en su defecto, de la entidad firmante."""
+    plano_objeto = sin_acentos(objeto)
+    for nombre, patron in AREAS_OBJETO:
+        if re.search(patron, plano_objeto):
+            return nombre
+    plano_entidades = sin_acentos(" / ".join(entidades))
+    for nombre, patron in AREAS_ENTIDAD:
+        if re.search(patron, plano_entidades):
+            return nombre
+    return "Sin clasificar"
+
+
 def sin_acentos(valor):
     descompuesto = unicodedata.normalize("NFKD", valor.lower())
     return "".join(c for c in descompuesto if not unicodedata.combining(c))
@@ -112,6 +169,7 @@ def leer_filas():
                     "num": r["Núm. de inscripción definitiva"].strip(),
                     "tipo": r["Tipo"].strip(),
                     "objeto": r["Objeto"].strip(),
+                    "area": area_tematica(r["Objeto"], otras),
                     "partes": " / ".join(otras) or "—",
                     "formaliza": a_iso(r["Fecha de formalización"]),
                     "inicio": a_iso(r["Duración: fecha inicio vigencia"]),
@@ -149,9 +207,22 @@ def clasificar(filas):
         nombre = sorted(grafias[k].items(), key=lambda x: (-x[1], -len(x[0])))[0][0]
         entidades.append({"entidad": nombre, "convenios": veces, "importe": round(imp[k], 2)})
 
+    # Clasificación temática: aquí cada convenio cuenta una sola vez.
+    areas_conv = Counter()
+    areas_imp = Counter()
+    for fila in filas:
+        areas_conv[fila["area"]] += 1
+        areas_imp[fila["area"]] += fila["importe"]
+    areas = [
+        {"area": a, "convenios": n, "importe": round(areas_imp[a], 2)}
+        for a, n in areas_conv.items()
+    ]
+
     return {
         "porNumero": sorted(entidades, key=lambda e: (-e["convenios"], -e["importe"], e["entidad"])),
         "porImporte": sorted(entidades, key=lambda e: (-e["importe"], -e["convenios"], e["entidad"])),
+        "porArea": sorted(areas, key=lambda a: (-a["convenios"], -a["importe"], a["area"])),
+        "porAreaImporte": sorted(areas, key=lambda a: (-a["importe"], -a["convenios"], a["area"])),
     }
 
 
@@ -180,6 +251,9 @@ def main():
         print(f"  {e['convenios']:3} convenios   {e['entidad']}")
     for e in clasificacion["porImporte"][:5]:
         print(f"  {e['importe']:>16,.2f} EUR   {e['entidad']}")
+    print(f"{len(clasificacion['porArea'])} areas tematicas")
+    for a in clasificacion["porArea"]:
+        print(f"  {a['convenios']:3} convenios  {a['importe']:>16,.2f} EUR   {a['area']}")
 
 
 if __name__ == "__main__":
